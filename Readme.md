@@ -12,7 +12,7 @@ This project applies a Genetic Algorithm (GA) to solve a combinatorial optimizat
 
 ## Genetic Algorithm Components
 - **Pairs Selection**: Top 50 fittest bees are chosen for crossover. Roulette wheel selection is used, where a bee's chance of selection is proportional to its fitness.
-- **Crossover (Partially Mapped Crossover - PMX)**: Two parent chromosomes are combined to create offspring. Segments between two chosen crossover points are swapped and duplicates are resolved using a mapping approach.
+- [**Crossover (Partially Mapped Crossover - PMX)**](https://github.com/ruta-tamosiunaite/partially-mapped-crossover): Two parent chromosomes are combined to create offspring. Segments between two chosen crossover points are swapped and duplicates are resolved using a mapping approach.
 - **Mutation (Place Change)**: Random changes in a path to explore new possibilities. Mutation rate determines the magnitude of change. Higher rates move a gene more significantly to the left or right in the chromosome.
 - **Updating Population**: Population is updated by replacing less fit ancestors with fitter offspring. The combined population and offspring are sorted, and the top 100 individuals are selected for the next generation.
 
