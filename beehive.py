@@ -103,7 +103,6 @@ class Beehive:
             pair = []
             while len(pair) < 2:
                 if not pair:
-
                     chosen_bee = self.roulette_wheel_selection(selected_bees, already_chosen)
                     if chosen_bee:
                         pair.append(chosen_bee)
@@ -136,6 +135,7 @@ class Beehive:
         return pairs
 
     def roulette_wheel_selection(self, bees, already_chosen):
+        # C H E C K  H E R E  F O R  T H E  E R R O R - need to use normalized fitness. Recalculate normalized fitness for possible pairs before each wheel turn. 
         S = sum(bee.fitness for bee in bees if bee not in already_chosen)
         r = random.uniform(0, S)
         P = 0
