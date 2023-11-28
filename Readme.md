@@ -10,7 +10,7 @@ The objective is to optimize the foraging path of bees, ensuring they collect ne
 - **Chromosomes**: Sequences of genes depicting a complete foraging path.
 - **Population**: A group of various foraging paths taken by the bees.
 - **Fitness Function**: Evaluates path efficiency based on the total distance. Lower distance implies higher efficiency.
-- **Euclidean Distance**: Used to calculate distances between points on the path. The distance \(d\) between two points \((x_1, y_1)\) and \((x_2, y_2)\) in 2D Cartesian coordinates is given by the formula:
+- **Euclidean Distance**: Used to calculate distances between points on the path. The distance `(d)` between two points `((x_1, y_1)\)` and `((x_2, y_2)\)` in 2D Cartesian coordinates is given by the formula:
 
 $$
 d = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
