@@ -43,5 +43,5 @@ $$
 - **Average Fitness Stagnation**: If the average fitness per generation remains the same for two consecutive generations, increase the mutation frequency by 1.
 
 ### Visualizations
-- Fittest Bee Path: ![Fittest Bee Path](Fittest bee path 8140.png)
-- Fitness Over Generations: ![Fitness Over Generations](Fittness over generations.png)
+- Fittest Bee Path: ![Fittest Bee Path](Fittest_bee_path_8140.png)
+- Fitness Over Generations: ![Fitness Over Generations](Fitness_over_generations.png)
