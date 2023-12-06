@@ -7,18 +7,93 @@ class Bee:
     def __init__(self, chromosome):
         self.unique_id = None
         self.chromosome = chromosome
-        self.fitness = self.calculate_fitness(chromosome)
+        self.fitness = self.calculate_fitness()
         self.chromosome_before_mutation = None
         self.fitness_before_mutation = None
         self.parent1 = None
         self.parent2 = None
-        self.normalized_fitness = None # variable depending on what population bee is at the moment of calculation
-        
-    def calculate_fitness(self, chromosome):
+        self.normalized_fitness = None
+
+    def calculate_fitness(self, chromosome=None):
+        if chromosome is None:
+            chromosome = self.chromosome
+
         total_distance = 0
         for i in range(len(chromosome) - 1):
-            total_distance += calculate_distance(chromosome[i], chromosome[i+1])
+            total_distance += calculate_distance(chromosome[i], chromosome[i + 1])
         return total_distance
+
+    def mutate(self, mutation_rate, mutation_frequency, hive_location):
+        best_fitness = self.fitness
+        best_chromosome = self.chromosome[:]
+        
+        for _ in range(mutation_frequency):
+            gene_index = random.randint(1, len(self.chromosome) - 2)
+            move_direction = random.choice([-1, 1])
+            move_steps = min(mutation_rate, gene_index if move_direction == -1 else len(self.chromosome) - 2 - gene_index)
+            new_position = (gene_index + move_direction * move_steps - 1) % (len(self.chromosome) - 2) + 1
+
+            # Perform mutation
+            self.chromosome[gene_index], self.chromosome[new_position] = self.chromosome[new_position], self.chromosome[gene_index]
+            self.ensure_hive_location(hive_location)
+            self.fitness = self.calculate_fitness()
+
+            # Check if this mutation improved fitness
+            if self.fitness < best_fitness:
+                best_fitness = self.fitness
+                best_chromosome = self.chromosome[:]
+            else:
+                # Revert mutation if it didn't improve fitness
+                self.chromosome = best_chromosome[:]
+                self.fitness = best_fitness
+
+    def ensure_hive_location(self, hive_location):
+        if self.chromosome[0] != hive_location or self.chromosome[-1] != hive_location:
+            print('Hive location is not correct !')
+
+    @staticmethod
+    def crossover(parent1, parent2, crossover_method="partially_mapped", number_of_children=1, current_generation=0):
+        offspring = []
+        if crossover_method == "partially_mapped":
+            children = Bee.partially_mapped_crossover(parent1, parent2, number_of_children)
+            if number_of_children == 1:
+                offspring.append(Bee(children))
+            else:
+                offspring.extend([Bee(children[0]), Bee(children[1])])
+        else:
+            raise NotImplementedError(f"Crossover method '{crossover_method}' is not implemented.")
+        return offspring
+
+    @staticmethod
+    def partially_mapped_crossover(parent1, parent2, number_of_children):
+        parent1_chromosome = parent1.chromosome
+        parent2_chromosome = parent2.chromosome 
+        size = len(parent1_chromosome)
+        # Step 1: Select crossover range at random
+        start, end = sorted(random.sample(range(1, size - 2), 2))  # Avoid the first and last gene (the hive)
+        
+        # Step 2: Create offspring by exchanging the selected range
+        child1 = parent1_chromosome[:start] + parent2_chromosome[start:end] + parent1_chromosome[end:]
+        child2 = parent2_chromosome[:start] + parent1_chromosome[start:end] + parent2_chromosome[end:]
+
+        # Step 3: Determine the mapping relationship to legalize offspring
+        mapping1 = {parent2_chromosome[i]: parent1_chromosome[i] for i in range(start, end)}
+        mapping2 = {parent1_chromosome[i]: parent2_chromosome[i] for i in range(start, end)}
+
+        # Step 4: Legalize children with the mapping relationship
+        for i in list(range(start)) + list(range(end, size)):
+            if child1[i] in mapping1:
+                while child1[i] in mapping1:
+                    child1[i] = mapping1[child1[i]]
+            if child2[i] in mapping2:
+                while child2[i] in mapping2:
+                    child2[i] = mapping2[child2[i]]
+
+        # Step 5: Return children based on the number of children requested
+        if number_of_children == 1:
+            return child1 if random.random() < 0.5 else child2
+        else:
+            return child1, child2
     
 class Beehive:
     def __init__(self, flowers, hive_location, population_size):
@@ -26,13 +101,6 @@ class Beehive:
         self.hive_location = hive_location
         self.population_size = population_size
         self.population = []  # List of Bee objects
-
-    def ensure_hive_location(self, chromosome):
-        """Ensure that the chromosome starts and ends with the hive location."""
-        if chromosome[0] != self.hive_location:
-            print('0 is NOT THE HIVE')
-        if chromosome[-1] != self.hive_location:
-            print('LAST is NOT THE HIVE')
 
     def initialize_population(self, method='hybrid', randomness_ratio=0.3, swap_count=2, swap_method='random_swap'):
         """
@@ -61,6 +129,7 @@ class Beehive:
             new_bee = Bee(chromosome=chromosome)
             self.population.append(new_bee)
 
+        # NEED TO DO THE SAME FOR ALL BEES...
         # Sort the bees based on fitness and give unique IDs
         self.population.sort(key=lambda bee: bee.fitness)
         for index, bee in enumerate(self.population, start=1):
@@ -120,12 +189,6 @@ class Beehive:
     
     def select_pairs_for_crossover(self, selection_method="roulette_wheel", number_of_bees=50):
         selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:50]
-        '''print('Bees selected for crosover:')
-        for bee in selected_bees:
-            if bee is None or bee.chromosome is None:
-                print("Error: Found a bee or its chromosome as None!")
-            else:
-                print(f'{bee.unique_id}: {bee.fitness}; len: {len(bee.chromosome)}')'''
         pairs = []
         while len(pairs) < 25 and selected_bees:
             pair = []
@@ -136,7 +199,6 @@ class Beehive:
                     selected_bees.remove(chosen_bee)  # Remove chosen bee to avoid selecting it again
             if pair:
                 pairs.append(tuple(pair))
-
         return pairs
 
     def roulette_wheel_selection(self, bees):
@@ -151,146 +213,28 @@ class Beehive:
             if P >= r:
                 return bee
         return None
-        
+    
     def perform_crossover(self, pairs, crossover_method="partially_mapped", number_of_children=1, current_generation=0):
         offspring = []
-        #print('parents:')
-        
         for parent1, parent2 in pairs:
-            if crossover_method == "partially_mapped":
-                children = self.partially_mapped_crossover(parent1, parent2, number_of_children)
-                if number_of_children == 1:
-                    new_bee1 = self.create_bee(children, parent1.unique_id, parent2.unique_id)
-                else:
-                    new_bee1 = self.create_bee(children[0], parent1.unique_id, parent2.unique_id)
-                    new_bee2 = self.create_bee(children[1], parent1.unique_id, parent2.unique_id)
-                    offspring.append(new_bee2)
-                    #self.ensure_hive_location(new_bee2.chromosome)
-                    #print(new_bee2.chromosome)
-                offspring.append(new_bee1)
-                #print(new_bee1.chromosome)
-                #self.ensure_hive_location(new_bee1.chromosome)
-                '''if parent1.chromosome == parent2.chromosome:
-                    print('identical parents')
-                    if parent1.chromosome == children:
-                        print('identical child')'''
-            else:
-                raise NotImplementedError(f"Crossover method '{crossover_method}' is not implemented.")
-        # Sort the offspring by fitness and assign unique IDs
-        offspring.sort(key=lambda bee: bee.fitness)
-        
+            new_offspring = Bee.crossover(parent1, parent2, crossover_method, number_of_children, current_generation)
+            offspring.extend(new_offspring)
+
+        # Assign unique IDs to offspring and sort them
         for rank, bee in enumerate(offspring, start=1):
             bee.unique_id = f"{current_generation}-{rank}"
-            '''print(bee.unique_id)
-            print(bee.chromosome)
-            print()'''
-        #print('/parents')
+            bee.ensure_hive_location(self.hive_location)
         return offspring
-
-    def partially_mapped_crossover(self, parent1, parent2, number_of_children=1):
-        parent1_chromosome = parent1.chromosome
-        parent2_chromosome = parent2.chromosome 
-        '''self.ensure_hive_location(parent1_chromosome)
-        self.ensure_hive_location(parent2_chromosome)'''
-        '''print('parents chromosomes:')
-        print(parent1_chromosome)
-        print(parent2_chromosome)'''
-        size = len(parent1_chromosome)
-        # Step 1: Select crossover range at random
-        start, end = sorted(random.sample(range(1, size - 2), 2))  # Avoid the first and last gene (the hive)
-        
-        # Step 2: Create offspring by exchanging the selected range
-        child1 = parent1_chromosome[:start] + parent2_chromosome[start:end] + parent1_chromosome[end:]
-        child2 = parent2_chromosome[:start] + parent1_chromosome[start:end] + parent2_chromosome[end:]
-
-        # Step 3: Determine the mapping relationship to legalize offspring
-        mapping1 = {parent2_chromosome[i]: parent1_chromosome[i] for i in range(start, end)}
-        mapping2 = {parent1_chromosome[i]: parent2_chromosome[i] for i in range(start, end)}
-
-        # Step 4: Legalize children with the mapping relationship
-        for i in list(range(start)) + list(range(end, size)):
-            if child1[i] in mapping1:
-                while child1[i] in mapping1:
-                    child1[i] = mapping1[child1[i]]
-            if child2[i] in mapping2:
-                while child2[i] in mapping2:
-                    child2[i] = mapping2[child2[i]]
-
-        '''if child1[0] != self.hive_location:
-            print('0 is NOT THE HIVE')
-        if child1[-1] != self.hive_location:
-            print('Child 1 LAST is NOT THE HIVE')'''
-        # Step 5: Return children based on the number of children requested
-        if number_of_children == 1:
-            return child1 if random.random() < 0.5 else child2
-        else:
-            '''if child2[0] != self.hive_location:
-                print('0 is NOT THE HIVE')
-            if child2[-1] != self.hive_location:
-                print('Child 2 LAST is NOT THE HIVE')'''
-            return child1, child2
     
-    def create_bee(self, chromosome, parent1_id, parent2_id):
-        new_bee = Bee(chromosome=chromosome)
-        new_bee.parent1 = parent1_id
-        new_bee.parent2 = parent2_id
-        return new_bee
-    
-    def perform_mutation(self, bees, mutation_method='place_change', mutation_rate=1):
+    def perform_mutation(self, bees, mutation_method='place_change', mutation_rate=1, mutation_frequency=2):
         for bee in bees:
             if mutation_method == 'place_change':
-                self.mutate_bee_place_change(bee, mutation_rate)
+                bee.mutate(mutation_rate, mutation_frequency, self.hive_location)
             else:
                 raise NotImplementedError(f"Mutation method '{mutation_method}' is not implemented.")
-        # Sort the offspring by fitness and assign unique IDs
+            bee.ensure_hive_location(self.hive_location)
         bees.sort(key=lambda bee: bee.fitness)
-        '''print(f'Performing mutation. Mutation method: {mutation_method}. Mutation rate: {mutation_rate}')
-        for child in bees:
-            print(child.unique_id)
-            print(child.chromosome)
-            print()'''
         return bees
-    
-    def mutate_bee_place_change(self, bee, mutation_rate):
-        # Store the original chromosome and fitness
-        self.ensure_hive_location(bee.chromosome)
-        chromosome_before_mutation = bee.chromosome[:]
-        fitness_before_mutation = bee.fitness
-
-        # Create a copy for the mutated chromosome
-        mutated_chromosome = chromosome_before_mutation[:]
-
-        # Select a gene to mutate (excluding the hive locations)
-        gene_index = random.randint(1, len(mutated_chromosome) - 2)
-
-        # Determine the move direction and magnitude
-        move_direction = random.choice([-1, 1])
-        move_steps = min(mutation_rate, gene_index if move_direction == -1 else len(mutated_chromosome) - 2 - gene_index)
-
-        # Calculate the new position, ensuring it stays within valid range
-        new_position = (gene_index + move_direction * move_steps - 1) % (len(mutated_chromosome) - 2) + 1
-
-        # Perform the mutation by moving the gene
-        gene_to_move = mutated_chromosome[gene_index]
-        mutated_chromosome.pop(gene_index)
-        mutated_chromosome.insert(new_position, gene_to_move)
-
-        # Update the bee's chromosome with the mutated one
-        bee.chromosome = mutated_chromosome
-        self.ensure_hive_location(mutated_chromosome)
-
-        # Update fitness and revert if not better
-        new_fitness = bee.calculate_fitness(bee.chromosome)
-        if new_fitness < fitness_before_mutation:
-            # If the new fitness is better, update fitness
-            bee.fitness = new_fitness
-            #print(f'{bee.unique_id} mutated is better')
-        else:
-            # Revert to the original chromosome and fitness
-            #print(f'{bee.unique_id} not mutated is better')
-            bee.chromosome = chromosome_before_mutation
-            bee.fitness = fitness_before_mutation
-
 
     def update_population(self, offspring):
         """Update the population with fitter offspring."""
@@ -311,6 +255,14 @@ class Beehive:
             "fittest_bee_chromosome": fittest_bee.chromosome,
             "fittest_bee_fitness": fittest_bee.fitness
         }
+    
+class BeesArchive:
+    def __init__(self):
+        self.all_bees = []  # List of all bee objects
+
+    def update_archive(self, bees):
+        for bee in bees:
+            self.all_bees.append(bee)
     
 def calculate_distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
