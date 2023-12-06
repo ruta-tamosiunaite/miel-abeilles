@@ -1,0 +1,77 @@
+import math
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Function to calculate Euclidean distance
+def calculate_distance(point1, point2):
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+
+# Function to calculate the fitness of a chromosome
+def calculate_fitness(chromosome):
+    total_distance = 0
+    for i in range(len(chromosome) - 1):
+        total_distance += calculate_distance(chromosome[i], chromosome[i + 1])
+    return total_distance
+
+# Load flower data and sort by distance to the hive
+excel_file_path = 'Champ de pissenlits et de sauge des pres.xlsx'
+df = pd.read_excel(excel_file_path)
+flowers = list(zip(df['x'], df['y']))
+hive_location = (500, 500)
+sorted_flowers = sorted(flowers, key=lambda coord: calculate_distance(coord, hive_location))
+
+# Generate a population of chromosomes
+population_size = 100  # User-defined population size
+population = []
+
+
+# Function to find the closest unvisited flower
+def find_closest_point(current_point, points, visited):
+    min_distance = float('inf')
+    closest_point = None
+    for point in points:
+        if point not in visited:
+            distance = calculate_distance(current_point, point)
+            if distance < min_distance:
+                min_distance = distance
+                closest_point = point
+    return closest_point
+
+for i in range(population_size):
+    # Start from the i-th closest flower to the hive
+    start_point = sorted_flowers[i % len(flowers)]
+    current_point = start_point
+    visited = {start_point}
+    path = [hive_location, current_point]
+
+    while len(visited) < len(flowers):
+        closest_flower = find_closest_point(current_point, flowers, visited)
+        if closest_flower:
+            path.append(closest_flower)
+            visited.add(closest_flower)
+            current_point = closest_flower
+
+    # Return to the hive at the end
+    path.append(hive_location)
+    population.append((path, calculate_fitness(path)))
+
+# Sort population by fitness and get the best chromosome
+print(len(population))
+population.sort(key=lambda x: x[1])
+best_chromosome = population[99][0]
+fitness_of_best_chromosome = population[0][1]
+print(fitness_of_best_chromosome)
+print(population[99][1])
+
+# Visualization
+plt.figure(figsize=(10, 8))
+x_path, y_path = zip(*best_chromosome)
+plt.plot(x_path, y_path, color='green', linestyle='-', linewidth=1, label='Best Bee Path')
+plt.scatter(*zip(*flowers), color='blue', label='Flowers')
+plt.scatter(*hive_location, color='red', label='Hive', marker='x')
+plt.title('Best Bee Foraging Path')
+plt.xlabel('X Coordinate')
+plt.ylabel('Y Coordinate')
+plt.legend()
+plt.grid(True)
+plt.show()
