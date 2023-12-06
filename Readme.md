@@ -25,20 +25,21 @@ $$
 ## Files
 - **Main.py**: Controls the algorithm flow and contains parameters.
 - **Beehive.py**: Hosts the `Bee` and `Beehive` classes. The Beehive class manages the bee population and oversees their evolution through generations.
-
-# Results Overview
   
-## Initial Setup
+  
+## Results Overview
+
+### Initial Setup
 - **Population**: Start with a random initial population of 100 bees.
 - **Crossover**: Implement roulette wheel selection for choosing parent bees. Each selected pair produces two children, contributing to the next generation.
 - **Selection**: After crossover, select the 100 fittest bees to form the new generation.
 
-## Mutation Strategy
+### Mutation Strategy
 - **Initial Mutation Rate**: 1 (neighbouring genes swap places).
 - **Initial Mutation Frequency**: 3 (three swaps per new bee's chromosome).
 
-# Adaptive Mutation
-- **Fittest Bee Stagnation**: If the fittest bee per generation remains unchanged, increase the mutation frequency by 1 and the mutation rate (making gene swap over more than one position to the left or right).
+### Adaptive Mutation
+- **Fittest Bee Stagnation**: If the fittest bee per generation remains unchanged, increase the mutation frequency by 1 and the mutation rate (enabling gene swap over more than one position to the left or right).
 - **Average Fitness Stagnation**: If the average fitness per generation remains the same for two consecutive generations, increase the mutation frequency by 1.
 
 ### Visualizations
