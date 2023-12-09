@@ -4,15 +4,12 @@ import random
 
 
 class Bee:
-    def __init__(self, chromosome):
+    def __init__(self, chromosome, parent1_id='0-0', parent2_id='0-0'):
         self.unique_id = None
         self.chromosome = chromosome
         self.fitness = self.calculate_fitness()
-        self.chromosome_before_mutation = None
-        self.fitness_before_mutation = None
-        self.parent1 = None
-        self.parent2 = None
-        self.normalized_fitness = None
+        self.parent1_id = parent1_id
+        self.parent2_id = parent2_id
 
     def calculate_fitness(self, chromosome=None):
         if chromosome is None:
@@ -57,9 +54,12 @@ class Bee:
         if crossover_method == "partially_mapped":
             children = Bee.partially_mapped_crossover(parent1, parent2, number_of_children)
             if number_of_children == 1:
-                offspring.append(Bee(children))
+                offspring.append(Bee(children, parent1_id=parent1.unique_id, parent2_id=parent2.unique_id))
             else:
-                offspring.extend([Bee(children[0]), Bee(children[1])])
+                offspring.extend([
+                    Bee(children[0], parent1_id=parent1.unique_id, parent2_id=parent2.unique_id),
+                    Bee(children[1], parent1_id=parent1.unique_id, parent2_id=parent2.unique_id)
+                ])
         else:
             raise NotImplementedError(f"Crossover method '{crossover_method}' is not implemented.")
         return offspring
@@ -102,13 +102,14 @@ class Beehive:
         self.population_size = population_size
         self.population = []  # List of Bee objects
 
-    def initialize_population(self, method='hybrid', randomness_ratio=0.3, swap_count=2, swap_method='random_swap'):
+    def initialize_population(self, method='hybrid', randomness_ratio=0.5, swap_count=2, swap_method='random_swap'):
         """
         Initialize the population of bees.
         
         :param method: Method to initialize ('random', 'nearest_flower', or 'hybrid').
-        :param randomness_ratio: Proportion of the population to initialize with added randomness.
-        :param swap_count: Number of swaps to introduce randomness in the path.
+        :param randomness_ratio: Used only with 'hybrid' method. Proportion of the population to initialize with added randomness.
+        :param swap_count: Used only with 'hybrid' method. Number of swaps to introduce randomness in the path.
+        :param swap_method: Used only with 'hybrid' method. Method to swap genes ('random_swap' or 'neighbour_swap').
         """
         print('Initializing population')
         num_random_bees = int(self.population_size * randomness_ratio)
@@ -129,13 +130,12 @@ class Beehive:
             new_bee = Bee(chromosome=chromosome)
             self.population.append(new_bee)
 
-        # NEED TO DO THE SAME FOR ALL BEES...
         # Sort the bees based on fitness and give unique IDs
         self.population.sort(key=lambda bee: bee.fitness)
         for index, bee in enumerate(self.population, start=1):
             bee.unique_id = f"0-{index}"
             print(f'Bee ID: {bee.unique_id}, Fitness: {bee.fitness}')
-            #self.ensure_hive_location(bee.chromosome)
+            bee.ensure_hive_location(self.hive_location)
 
     def introduce_randomness_to_path(self, path, swap_count, method='neighbour_swap'):
         for _ in range(swap_count):
@@ -188,7 +188,7 @@ class Beehive:
         return closest_point
     
     def select_pairs_for_crossover(self, selection_method="roulette_wheel", number_of_bees=50):
-        selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:50]
+        selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:number_of_bees]
         pairs = []
         while len(pairs) < 25 and selected_bees:
             pair = []
@@ -258,11 +258,16 @@ class Beehive:
     
 class BeesArchive:
     def __init__(self):
-        self.all_bees = []  # List of all bee objects
+        self.all_bees = []
 
-    def update_archive(self, bees):
-        for bee in bees:
-            self.all_bees.append(bee)
+    def add_bee(self, bee):
+        self.all_bees.append(bee)
+
+    def get_bee_by_id(self, unique_id):
+        for bee in self.all_bees:
+            if bee.unique_id == unique_id:
+                return bee
+        return None
     
 def calculate_distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
