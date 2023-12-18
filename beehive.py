@@ -1,6 +1,7 @@
 import sys
 import math
 import random
+import pandas as pd
 
 
 class Bee:
@@ -20,7 +21,7 @@ class Bee:
             total_distance += calculate_distance(chromosome[i], chromosome[i + 1])
         return total_distance
 
-    def mutate(self, mutation_rate, mutation_frequency, hive_location):
+    def mutate(self, mutation_rate, mutation_frequency):
         best_fitness = self.fitness
         best_chromosome = self.chromosome[:]
         
@@ -29,10 +30,9 @@ class Bee:
             move_direction = random.choice([-1, 1])
             move_steps = min(mutation_rate, gene_index if move_direction == -1 else len(self.chromosome) - 2 - gene_index)
             new_position = (gene_index + move_direction * move_steps - 1) % (len(self.chromosome) - 2) + 1
-
+    
             # Perform mutation
             self.chromosome[gene_index], self.chromosome[new_position] = self.chromosome[new_position], self.chromosome[gene_index]
-            self.ensure_hive_location(hive_location)
             self.fitness = self.calculate_fitness()
 
             # Check if this mutation improved fitness
@@ -46,26 +46,11 @@ class Bee:
 
     def ensure_hive_location(self, hive_location):
         if self.chromosome[0] != hive_location or self.chromosome[-1] != hive_location:
-            print('Hive location is not correct !')
-
+            print('Error: Hive location is not correct !')
+            sys.exit()
+    
     @staticmethod
-    def crossover(parent1, parent2, crossover_method="partially_mapped", number_of_children=1, current_generation=0):
-        offspring = []
-        if crossover_method == "partially_mapped":
-            children = Bee.partially_mapped_crossover(parent1, parent2, number_of_children)
-            if number_of_children == 1:
-                offspring.append(Bee(children, parent1_id=parent1.unique_id, parent2_id=parent2.unique_id))
-            else:
-                offspring.extend([
-                    Bee(children[0], parent1_id=parent1.unique_id, parent2_id=parent2.unique_id),
-                    Bee(children[1], parent1_id=parent1.unique_id, parent2_id=parent2.unique_id)
-                ])
-        else:
-            raise NotImplementedError(f"Crossover method '{crossover_method}' is not implemented.")
-        return offspring
-
-    @staticmethod
-    def partially_mapped_crossover(parent1, parent2, number_of_children):
+    def partially_mapped_crossover(parent1, parent2):
         parent1_chromosome = parent1.chromosome
         parent2_chromosome = parent2.chromosome 
         size = len(parent1_chromosome)
@@ -89,108 +74,59 @@ class Bee:
                 while child2[i] in mapping2:
                     child2[i] = mapping2[child2[i]]
 
-        # Step 5: Return children based on the number of children requested
-        if number_of_children == 1:
-            return child1 if random.random() < 0.5 else child2
-        else:
-            return child1, child2
-    
+        # Step 5: Return the fitter child
+        temp_bee1 = Bee(child1)
+        temp_bee2 = Bee(child2)
+        child1_fitness = temp_bee1.calculate_fitness()
+        child2_fitness = temp_bee2.calculate_fitness()
+        return child1 if child1_fitness < child2_fitness else child2 # Select the fitter child if only one child is needed
+
 class Beehive:
-    def __init__(self, flowers, hive_location, population_size):
+    def __init__(self, flowers, hive_location, population_size, bees_archive, seed=None):
         self.flowers = flowers
         self.hive_location = hive_location
         self.population_size = population_size
         self.population = []  # List of Bee objects
+        self.distances_table = self.calculate_distances_table()
 
-    def initialize_population(self, method='hybrid', randomness_ratio=0.5, swap_count=2, swap_method='random_swap'):
-        """
-        Initialize the population of bees.
-        
-        :param method: Method to initialize ('random', 'nearest_flower', or 'hybrid').
-        :param randomness_ratio: Used only with 'hybrid' method. Proportion of the population to initialize with added randomness.
-        :param swap_count: Used only with 'hybrid' method. Number of swaps to introduce randomness in the path.
-        :param swap_method: Used only with 'hybrid' method. Method to swap genes ('random_swap' or 'neighbour_swap').
-        """
-        print('Initializing population')
-        num_random_bees = int(self.population_size * randomness_ratio)
-
-        if method in ['nearest_flower', 'hybrid']:
-            sorted_flowers = sorted(self.flowers, key=lambda point: calculate_distance(point, self.hive_location))
+        # Generate initial population
+        if seed is None:
+            seed = random.randint(0, 1000000)
+        self.seed = seed
+        random.seed(seed)  # Set the seed for reproducibility
+        print(f"Random seed used for this run: {seed}")
 
         for i in range(self.population_size):
-            if method == 'random' or (method == 'hybrid' and i < num_random_bees):
-                chromosome = self.create_random_chromosome()
-            elif method in ['nearest_flower', 'hybrid']:
-                start_point = sorted_flowers[i % len(self.flowers)]
-                chromosome = self.create_path_using_nearest_flower(start_point)
-
-                if method == 'hybrid':
-                    chromosome = self.introduce_randomness_to_path(chromosome, swap_count, swap_method)
-
-            new_bee = Bee(chromosome=chromosome)
+            chromosome = self.flowers[:]  # Create a copy of flowers
+            random.shuffle(chromosome)  # Shuffle the copy
+            new_bee = Bee(chromosome=[self.hive_location] + chromosome + [self.hive_location])
             self.population.append(new_bee)
-
-        # Sort the bees based on fitness and give unique IDs
-        self.population.sort(key=lambda bee: bee.fitness)
-        for index, bee in enumerate(self.population, start=1):
-            bee.unique_id = f"0-{index}"
-            print(f'Bee ID: {bee.unique_id}, Fitness: {bee.fitness}')
-            bee.ensure_hive_location(self.hive_location)
-
-    def introduce_randomness_to_path(self, path, swap_count, method='neighbour_swap'):
-        for _ in range(swap_count):
-            if method == 'random_swap':
-                idx1, idx2 = random.sample(range(1, len(path) - 2), 2)  # Avoid swapping the hive location
-                path[idx1], path[idx2] = path[idx2], path[idx1]
-            elif method == 'neighbour_swap':
-                gene_index = random.randint(1, len(path) - 2)
-                # Determine move direction (backward or forward)
-                if gene_index == 1:  # If the gene is next to the starting hive, it can only move forward
-                    move_direction = 1
-                elif gene_index == len(path) - 2:  # If the gene is next to the ending hive, it can only move backward
-                    move_direction = -1
-                else:  # Otherwise, randomly choose to move backward or forward
-                    move_direction = random.choice([-1, 1])
-                # Perform the move by swapping the selected gene with its neighbor
-                neighbor_index = gene_index + move_direction
-                path[gene_index], path[neighbor_index] = path[neighbor_index], path[gene_index]
-        return path
-        
-    def create_random_chromosome(self):
-        path = self.flowers.copy()
-        random.shuffle(path)
-        return [self.hive_location] + path + [self.hive_location]
+            bees_archive.add_bee(new_bee)
     
-    def create_path_using_nearest_flower(self, start_point):
-        current_point = start_point
-        visited = {start_point}
-        path = [self.hive_location, current_point]
+    def calculate_distances_table(self):
+        # Create a DataFrame to store distances
+        locations = [(f'{self.hive_location}', self.hive_location)] + [(f'{flower}', flower) for i, flower in enumerate(self.flowers)]
+        distances = {}
 
-        while len(visited) < len(self.flowers):
-            closest_flower = self.find_closest_point(current_point, self.flowers, visited)
-            if closest_flower:
-                path.append(closest_flower)
-                visited.add(closest_flower)
-                current_point = closest_flower
+        for loc1_name, loc1_coords in locations:
+            row_distances = {}
+            for loc2_name, loc2_coords in locations:
+                if loc1_name == loc2_name:
+                    row_distances[loc2_name] = '-'
+                else:
+                    distance = math.sqrt((loc1_coords[0] - loc2_coords[0])**2 + (loc1_coords[1] - loc2_coords[1])**2)
+                    row_distances[loc2_name] = round(distance, 2)
+            distances[loc1_name] = row_distances
 
-        path.append(self.hive_location)
-        return path
-        
-    def find_closest_point(self, current_point, points, visited):
-        min_distance = float('inf')
-        closest_point = None
-        for point in points:
-            if point not in visited:
-                distance = calculate_distance(current_point, point)
-                if distance < min_distance:
-                    min_distance = distance
-                    closest_point = point
-        return closest_point
+        distances_table = pd.DataFrame.from_dict(distances, orient='index')
+        print(distances_table)
+        return distances_table
     
-    def select_pairs_for_crossover(self, selection_method="roulette_wheel", number_of_bees=50):
-        selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:number_of_bees]
+    def run_generation(self, bees_archive, select_bees=50, mutation_rate=1, mutation_frequency=1, current_generation=0):
+        # S E L E C T  P A I R S  F O R  C R O S S O V E R
+        selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:select_bees]
         pairs = []
-        while len(pairs) < 25 and selected_bees:
+        while len(pairs) < (select_bees / 2) and selected_bees:
             pair = []
             for _ in range(2):
                 chosen_bee = self.roulette_wheel_selection(selected_bees)
@@ -199,11 +135,47 @@ class Beehive:
                     selected_bees.remove(chosen_bee)  # Remove chosen bee to avoid selecting it again
             if pair:
                 pairs.append(tuple(pair))
-        return pairs
 
+        # P E R F O R M  C R O S S O V E R
+        offspring = []
+        for parent1, parent2 in pairs:
+            new_offspring = Bee.partially_mapped_crossover(parent1, parent2)
+            offspring.append(Bee(new_offspring, parent1_id=parent1.unique_id, parent2_id=parent2.unique_id))
+
+        # P E R F O R M  M U T A T I O N
+        average_fitness = sum(bee.fitness for bee in self.population) / len(self.population)
+        for bee in offspring:
+            bee.mutate(mutation_rate, mutation_frequency)
+            if bee.fitness > average_fitness:
+                pass
+                #bee.mutate(mutation_rate, self.distances_table)
+            # If the new bee fitness is bigger than the average fitness of the population, then launch mutation.
+            # mutation rate 1 will mean that a random gene will be selected. 
+            # The two closest points to the gene will be taken from the already created table of all distances. 
+            # These fllowers will be moved to be from the left and right of the randomly selected gene (trying both and choosing the option where bee fitness is better - smaller). 
+            # If the hive happens to be the closest point, then the not the hive but the randomly selected gene moves to the beginning or the end of the chromosome, and the second closest point to the gene go before of after the randomly selected gene, but always keeping the hive the first and the last element of the chromosome (trying both - putting gene as a first or one before last element of the chrosomosome and choosing the option where bee fitness is better) .
+        
+        # Sort offspring and assign unique IDs to them
+        offspring.sort(key=lambda bee: bee.fitness)
+        for rank, bee in enumerate(offspring, start=1):
+            bee.unique_id = f"{current_generation}-{rank}"
+            bee.ensure_hive_location(self.hive_location)
+
+        # U P D A T E  P O P U L A T I O N
+        combined_population = self.population + offspring
+        combined_population.sort(key=lambda bee: bee.fitness)
+        self.population = combined_population[:self.population_size]
+        for bee in combined_population: # Add new bees to the archive
+            if bee in offspring:
+                bees_archive.add_bee(bee)
+
+        # A N A L Y Z E  F I T N E S S
+        results = self.analyze_fitness()
+        return results
+    
     def roulette_wheel_selection(self, bees):
         # Invert fitness values to make lower fitness more likely to be selected
-        inverted_fitness = [1.0 / bee.fitness for bee in bees]
+        inverted_fitness = [1000 / bee.fitness for bee in bees]
         total_inverted_fitness = sum(inverted_fitness)
 
         r = random.uniform(0, total_inverted_fitness)
@@ -213,37 +185,8 @@ class Beehive:
             if P >= r:
                 return bee
         return None
-    
-    def perform_crossover(self, pairs, crossover_method="partially_mapped", number_of_children=1, current_generation=0):
-        offspring = []
-        for parent1, parent2 in pairs:
-            new_offspring = Bee.crossover(parent1, parent2, crossover_method, number_of_children, current_generation)
-            offspring.extend(new_offspring)
-
-        # Assign unique IDs to offspring and sort them
-        for rank, bee in enumerate(offspring, start=1):
-            bee.unique_id = f"{current_generation}-{rank}"
-            bee.ensure_hive_location(self.hive_location)
-        return offspring
-    
-    def perform_mutation(self, bees, mutation_method='place_change', mutation_rate=1, mutation_frequency=2):
-        for bee in bees:
-            if mutation_method == 'place_change':
-                bee.mutate(mutation_rate, mutation_frequency, self.hive_location)
-            else:
-                raise NotImplementedError(f"Mutation method '{mutation_method}' is not implemented.")
-            bee.ensure_hive_location(self.hive_location)
-        bees.sort(key=lambda bee: bee.fitness)
-        return bees
-
-    def update_population(self, offspring):
-        """Update the population with fitter offspring."""
-        combined_population = self.population + offspring
-        combined_population.sort(key=lambda bee: bee.fitness)
-        self.population = combined_population[:self.population_size]
 
     def analyze_fitness(self):
-        """Calculate and analyze the fitness of the population."""
         total_fitness = sum(bee.fitness for bee in self.population)
         average_fitness = total_fitness / len(self.population)
         fittest_bee = min(self.population, key=lambda bee: bee.fitness)
