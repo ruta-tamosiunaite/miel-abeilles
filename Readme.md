@@ -23,7 +23,7 @@ Each selected pair produces one fitter child, potentially contributing to the ne
 - **Mutation**: Enhances bee path efficiency by reordering the chromosome using proximity data.
   - `mutation_rate` indicates the number of genes (flowers) to consider for mutation. 
   - A dictionary `distances_table` contains the two closest points to each location. 
-  - Rearrangement strategy:
+  - Rearrangement strategy:  
     - Closest point          -> Neighbour to the right
     - Second Closest point   -> Neighbour to the left
 
