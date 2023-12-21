@@ -17,9 +17,7 @@ d = \sqrt{(x2 - x1)^2 + (y2 - y1)^2}
 $$
 
 ## Genetic Algorithm Components
--  **Pairs Selection**: Selection is based on a roulette wheel method, where selection likelihood is inversely proportional to bee fitness, favoring those with smaller fitness values. A flattening formula is applied to moderate selection bias:
-
-$$
+-  **Pairs Selection**: Selection is based on a roulette wheel method, where selection likelihood is inversely proportional to bee fitness, favoring those with smaller fitness values. A flattening formula is applied to moderate selection bias: $$
 y = \frac{1000}{x}
 $$
 
