@@ -21,6 +21,7 @@ $$
 $$
 y = \frac{1000}{x}
 $$
+  
 - **Crossover ([Partially Mapped Crossover](https://github.com/ruta-tamosiunaite/partially-mapped-crossover) - PMX)**: Two parent chromosomes are combined to create offspring. Segments between two chosen crossover points are swapped and duplicates are resolved using a mapping approach.
 Each selected pair produces one fitter child, potentially contributing to the next generation.
 - **Mutation**: Enhances bee path efficiency by reordering the chromosome using proximity data.
