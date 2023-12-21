@@ -29,7 +29,7 @@ Each selected pair produces one fitter child, potentially contributing to the ne
 
 - **Updating Population**: Population is updated by replacing less fit ancestors with fitter offspring. The combined population and offspring are sorted, and the top 100 individuals are selected for the next generation.
   
-- **Stopping the script**: Halt the generations when the chromosomes of the first and last bees in a sorted population are identical, signaling that *all bees are the same and further improvement is unlikely*.
+- **Stopping the script**: Halt the generations when the chromosomes of the first and last bees in a sorted population are identical, signaling that all bees are the same and further improvement is unlikely.
   
 
 ## Files
