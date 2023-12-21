@@ -17,10 +17,7 @@ d = \sqrt{(x2 - x1)^2 + (y2 - y1)^2}
 $$
 
 ## Genetic Algorithm Components
--  **Pairs Selection**: Selection is based on a roulette wheel method, where selection likelihood is inversely proportional to bee fitness, favoring those with smaller fitness values. A flattening formula is applied to moderate selection bias: 
-$$
-y = \frac{1000}{x}
-$$
+-  **Pairs Selection**: Selection is based on a roulette wheel method, where selection likelihood is inversely proportional to bee fitness, favoring those with smaller fitness values. A flattening formula is applied to moderate selection bias: $$y = \frac{1000}{x}$$
 
 - **Crossover ([Partially Mapped Crossover](https://github.com/ruta-tamosiunaite/partially-mapped-crossover) - PMX)**: Two parent chromosomes are combined to create offspring. Segments between two chosen crossover points are swapped and duplicates are resolved using a mapping approach.
 Each selected pair produces one fitter child, potentially contributing to the next generation.
