@@ -17,31 +17,50 @@ d = \sqrt{(x2 - x1)^2 + (y2 - y1)^2}
 $$
 
 ## Genetic Algorithm Components
-- **Pairs Selection**: Top 50 fittest bees are chosen for crossover. Roulette wheel selection is used, where a bee's chance of selection is proportional to its inversed fitness (because smaller is better).
+- **Pairs Selection**: Selection is based on a roulette wheel method, where selection likelihood is inversely proportional to bee fitness, favoring those with smaller fitness values. A flattening formula $$ y = 1000 / x $$ is applied to moderate selection bias.
 - **Crossover ([Partially Mapped Crossover](https://github.com/ruta-tamosiunaite/partially-mapped-crossover) - PMX)**: Two parent chromosomes are combined to create offspring. Segments between two chosen crossover points are swapped and duplicates are resolved using a mapping approach.
-- **Mutation (Place Change)**: Random changes in a path to explore new possibilities. Mutation rate determines the magnitude of change. Higher rates move a gene more significantly to the left or right in the chromosome.
+Each selected pair produces one fitter child, potentially contributing to the next generation.
+- **Mutation**: Enhances bee path efficiency by reordering the chromosome using proximity data.
+  - `mutation_rate` indicates the number of genes (flowers) to consider for mutation. 
+  - A dictionary `distances_table` contains the two closest points to each location. 
+  
+>**Rearrangement strategy**:
+>    
+>- Closest point          -> Neighbour to the right
+>- Second Closest point   -> Neighbour to the left
+
 - **Updating Population**: Population is updated by replacing less fit ancestors with fitter offspring. The combined population and offspring are sorted, and the top 100 individuals are selected for the next generation.
+  
+- **Stopping the script**: Halt the generations when the chromosomes of the first and last bees in a sorted population are identical, signaling that *all bees are the same and further improvement is unlikely*.
+  
 
 ## Files
 - **Main.py**: Controls the algorithm flow and contains parameters.
-- **Beehive.py**: Hosts the `Bee` and `Beehive` classes. The Beehive class manages the bee population and oversees their evolution through generations.
+- **Beehive.py**: Hosts the `Bee`, `Beehive` and `BeesArchive` classes. The Beehive class manages the bee population and oversees their evolution through generations. The Bees Arhive class  
   
   
 ## Results Overview
 
 ### Initial Setup
-- **Population**: Start with a random initial population of 100 bees.
-- **Crossover**: Implement roulette wheel selection for choosing parent bees. Each selected pair produces two children, contributing to the next generation.
-- **Selection**: After crossover, select the 100 fittest bees to form the new generation.
+- **Population size**: Random initial population of 100 bees.
+- **Number of generations**: 150
+- **Crossover**: Select all 100 bees for crossover.
+- **Initial Mutation Rate**: 5
+- **Adaptive Mutation**: If the fittest bee per generation remains unchanged or the average fitness per generation remains the same for two consecutive generations, increase the mutation rate by 1.
 
-### Mutation Strategy
-- **Initial Mutation Rate**: 1 (neighbouring genes swap places).
-- **Initial Mutation Frequency**: 3 (three swaps per new bee's chromosome).
-
-### Adaptive Mutation
-- **Fittest Bee Stagnation**: If the fittest bee per generation remains unchanged, increase the mutation frequency by 1 and the mutation rate (enabling gene swap over more than one position to the left or right).
-- **Average Fitness Stagnation**: If the average fitness per generation remains the same for two consecutive generations, increase the mutation frequency by 1.
-
-![Fittest Bee Path](Fittest_bee_path_8140.png)
+![Fittest Bee Path](Fittest_bee_path.png)
   
 ![Fitness Over Generations](Fitness_over_generations.png)
+
+![Family Tree](Family_tree.png)
+
+
+## Insights
+
+- **Population selection for crossover** - Optimal reproduction outcomes are achieved by selecting **all bees**, not the TOP 50. This approach ensures higher chromosome variation and controlled convergence.
+  
+- **Initial population strategy** - For the Traveling Salesman Problem, initializing with a fit population leads to significantly improved results (distance of ~5500) but causes rapid convergence and homogeneity. Introducing random chromosomes does not notably enhance outcomes.
+
+>Enhancing initial population diversity may involve using **point clusters**, originating from the beehive, and exploring different cluster combinations for path construction defining both start and end simultaneously. A random flower from each cluster is selected for the initial path, promoting variety though it may not necessarily surpass existing methods.
+
+- **Mutation Refinement**: Mutation could be improved by considering the spatial area between two flowers, A and B. If any flowers within a defined width of the line from A to B aren't between them in the chromosome, the path is rearranged to include the nearest of these flowers to A. This process starts with a minimal skip between A and B and adjusts dynamically, with the maximum width being the distance between A and B.

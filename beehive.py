@@ -1,7 +1,6 @@
 import sys
 import math
 import random
-import pandas as pd
 
 
 class Bee:
@@ -21,32 +20,63 @@ class Bee:
             total_distance += calculate_distance(chromosome[i], chromosome[i + 1])
         return total_distance
 
-    def mutate(self, mutation_rate, mutation_frequency):
-        best_fitness = self.fitness
-        best_chromosome = self.chromosome[:]
-        
-        for _ in range(mutation_frequency):
-            gene_index = random.randint(1, len(self.chromosome) - 2)
-            move_direction = random.choice([-1, 1])
-            move_steps = min(mutation_rate, gene_index if move_direction == -1 else len(self.chromosome) - 2 - gene_index)
-            new_position = (gene_index + move_direction * move_steps - 1) % (len(self.chromosome) - 2) + 1
-    
-            # Perform mutation
-            self.chromosome[gene_index], self.chromosome[new_position] = self.chromosome[new_position], self.chromosome[gene_index]
-            self.fitness = self.calculate_fitness()
+    def mutate(self, distances_table, mutation_rate):
+        beehive = self.chromosome[0]
+        available_genes = self.chromosome[:]
+        copy_of_the_chromosome = self.chromosome[:]
+        chromosome_length = len(self.chromosome)
+        for _ in range(min(mutation_rate, len(available_genes))):
+            point_selected = random.choice(available_genes)
+            available_genes.remove(point_selected)
+            random_gene = self.chromosome.index(point_selected)
 
-            # Check if this mutation improved fitness
-            if self.fitness < best_fitness:
-                best_fitness = self.fitness
-                best_chromosome = self.chromosome[:]
-            else:
-                # Revert mutation if it didn't improve fitness
-                self.chromosome = best_chromosome[:]
-                self.fitness = best_fitness
+            closest_points = distances_table[point_selected] # closest points in desc order for the random point selected
+            closest_point_1 = closest_points[0]
+            closest_point_2 = closest_points[1]
+
+            neighbour_from_left = self.chromosome[random_gene-1] # Find neighbours
+            try: neighbour_from_right = self.chromosome[random_gene+1]
+            except: neighbour_from_right = beehive # In case when beehive selected
+
+            # Neighbour to the left  -> closest_point_2
+            # Neighbour to the right -> closest_point_1
+            # left_or_right = random.randint(0, 1)
+            if True:
+                if closest_point_2 == beehive:
+                    self.chromosome.remove(point_selected)
+                    self.chromosome.insert(1, point_selected)
+                    neighbour_from_left = beehive
+                    neighbour_from_right = self.chromosome[2]
+
+                if neighbour_from_left != closest_point_2:
+                    self.chromosome.remove(closest_point_2)
+                    index_of_closest_point_2 = self.chromosome.index(point_selected)
+                    if index_of_closest_point_2 == 0:
+                        self.chromosome.insert(chromosome_length-2, closest_point_2)
+                    else:
+                        self.chromosome.insert(index_of_closest_point_2, closest_point_2)
+            if True:
+                if closest_point_1 == beehive:
+                    self.chromosome.remove(point_selected)
+                    self.chromosome.insert(chromosome_length-2, point_selected)
+                    neighbour_from_left = self.chromosome[chromosome_length-3]
+                    neighbour_from_right = beehive
+
+                if neighbour_from_right != closest_point_1:
+                    self.chromosome.remove(closest_point_1)
+                    index_of_closest_point_1 = self.chromosome.index(point_selected) + 1
+                    self.chromosome.insert(index_of_closest_point_1, closest_point_1)
+            previous_fitness = self.calculate_fitness(copy_of_the_chromosome)
+            fitness_after_mutation = self.calculate_fitness(self.chromosome)
+            if previous_fitness < fitness_after_mutation:
+                self.chromosome = copy_of_the_chromosome
+                self.fitness = previous_fitness
+        return self.chromosome
 
     def ensure_hive_location(self, hive_location):
         if self.chromosome[0] != hive_location or self.chromosome[-1] != hive_location:
             print('Error: Hive location is not correct !')
+            print(self.chromosome)
             sys.exit()
     
     @staticmethod
@@ -87,7 +117,7 @@ class Beehive:
         self.hive_location = hive_location
         self.population_size = population_size
         self.population = []  # List of Bee objects
-        self.distances_table = self.calculate_distances_table()
+        self.distances_table = self.calculate_closest_points()
 
         # Generate initial population
         if seed is None:
@@ -103,26 +133,23 @@ class Beehive:
             self.population.append(new_bee)
             bees_archive.add_bee(new_bee)
     
-    def calculate_distances_table(self):
-        # Create a DataFrame to store distances
-        locations = [(f'{self.hive_location}', self.hive_location)] + [(f'{flower}', flower) for i, flower in enumerate(self.flowers)]
-        distances = {}
+    def calculate_closest_points(self):
+        points = self.flowers + [self.hive_location]
+        closest_points = {} # Dictionary to hold the closest points for each location
 
-        for loc1_name, loc1_coords in locations:
-            row_distances = {}
-            for loc2_name, loc2_coords in locations:
-                if loc1_name == loc2_name:
-                    row_distances[loc2_name] = '-'
-                else:
-                    distance = math.sqrt((loc1_coords[0] - loc2_coords[0])**2 + (loc1_coords[1] - loc2_coords[1])**2)
-                    row_distances[loc2_name] = round(distance, 2)
-            distances[loc1_name] = row_distances
+        for i, point in enumerate(points):
+            distances = []
+            for j, other_point in enumerate(points):
+                if i != j:
+                    distance = calculate_distance(point, other_point)
+                    distances.append((distance, other_point))
 
-        distances_table = pd.DataFrame.from_dict(distances, orient='index')
-        print(distances_table)
-        return distances_table
+            distances.sort() # Sort the distances and get the four closest points
+            closest_points[point] = [location for _, location in distances[:4]]
+
+        return closest_points
     
-    def run_generation(self, bees_archive, select_bees=50, mutation_rate=1, mutation_frequency=1, current_generation=0):
+    def run_generation(self, bees_archive, select_bees=50, mutation_rate=1, current_generation=0):
         # S E L E C T  P A I R S  F O R  C R O S S O V E R
         selected_bees = sorted(self.population, key=lambda bee: bee.fitness)[:select_bees]
         pairs = []
@@ -145,15 +172,9 @@ class Beehive:
         # P E R F O R M  M U T A T I O N
         average_fitness = sum(bee.fitness for bee in self.population) / len(self.population)
         for bee in offspring:
-            bee.mutate(mutation_rate, mutation_frequency)
+            bee.ensure_hive_location(self.hive_location)
             if bee.fitness > average_fitness:
-                pass
-                #bee.mutate(mutation_rate, self.distances_table)
-            # If the new bee fitness is bigger than the average fitness of the population, then launch mutation.
-            # mutation rate 1 will mean that a random gene will be selected. 
-            # The two closest points to the gene will be taken from the already created table of all distances. 
-            # These fllowers will be moved to be from the left and right of the randomly selected gene (trying both and choosing the option where bee fitness is better - smaller). 
-            # If the hive happens to be the closest point, then the not the hive but the randomly selected gene moves to the beginning or the end of the chromosome, and the second closest point to the gene go before of after the randomly selected gene, but always keeping the hive the first and the last element of the chromosome (trying both - putting gene as a first or one before last element of the chrosomosome and choosing the option where bee fitness is better) .
+                bee.mutate(self.distances_table, mutation_rate)
         
         # Sort offspring and assign unique IDs to them
         offspring.sort(key=lambda bee: bee.fitness)

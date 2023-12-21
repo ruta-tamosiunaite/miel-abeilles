@@ -28,11 +28,11 @@ hive_location = (500, 500)
 
 # P A R A M E T E R S
 population_size = 100
-num_generations = 500
+num_generations = 150
 select_bees = 100 # How many bees to select for crossover
-mutation_rate = 1 # Mutation rate. 1 means a random gene changes the place by 1 step.
-mutation_frequency = 3 # Mutation frequency. Means how many genes will change its places.
-random_seed = None
+mutation_rate = 5
+
+random_seed = 67502
 
 # A L G O R I T H M
 average_fitness_per_generation = [] # Saving average fitnesses of all generations
@@ -47,19 +47,16 @@ fittest_bee_per_generation.append(fitness_results["fittest_bee_fitness"])
 
 for generation in range(num_generations):
     print(f'\n{generation + 1}')
-    new_population = beehive.run_generation(bees_archive, select_bees=select_bees, mutation_rate=mutation_rate, mutation_frequency=mutation_frequency, current_generation=generation+1)
+    new_population = beehive.run_generation(bees_archive, select_bees=select_bees, mutation_rate=mutation_rate, current_generation=generation+1)
     
     if generation > 1:
         if average_fitness_per_generation[generation-1] == average_fitness_per_generation[generation-2]:
-            mutation_frequency = mutation_frequency + 1
-            print(f'New mutation frequency: {mutation_frequency}')
-        elif fittest_bee_per_generation[generation-1] == fittest_bee_per_generation[generation-2]:
-            mutation_frequency = mutation_frequency + 1 # If 2 last fittest bees' fitnesses are equal, increase mutation rate and mutation frequency by one
             mutation_rate = mutation_rate + 1
             print(f'New mutation rate: {mutation_rate}')
-            print(f'New mutation frequency: {mutation_frequency}')
-
-        # Check if the first and last bees have identical chromosomes
+        elif fittest_bee_per_generation[generation-1] == fittest_bee_per_generation[generation-2]:
+            mutation_rate = mutation_rate + 1
+            print(f'New mutation rate: {mutation_rate}')
+        
         if beehive.population[0].chromosome == beehive.population[-1].chromosome:
             print("First and last bees have identical chromosomes. Stopping further generations.")
             break
@@ -76,7 +73,7 @@ print(fittest_bee_path)
 # Displaying the fittest bee path
 x_coords, y_coords = zip(*fittest_bee_path)
 plt.plot(x_coords, y_coords, marker='o')
-plt.title(f"Fittest bee path - Fitness {int(new_population['fittest_bee_fitness'])} - Seed {beehive.seed}")
+plt.title(f"Fittest bee path - ID {fittest_bee_id} - Fitness {int(new_population['fittest_bee_fitness'])} - Seed {beehive.seed}")
 plt.xlabel("X Coordinate")
 plt.ylabel("Y Coordinate")
 plt.show()
