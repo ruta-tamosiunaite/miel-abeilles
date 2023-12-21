@@ -61,6 +61,6 @@ Each selected pair produces one fitter child, potentially contributing to the ne
   
 - **Initial population strategy** - For the Traveling Salesman Problem, initializing with a fit population leads to significantly improved results (distance of ~5500) but causes rapid convergence and homogeneity. Introducing random chromosomes does not notably enhance outcomes.
 
->Enhancing initial population diversity may involve using **point clusters**, originating from the beehive, and exploring different cluster combinations for path construction defining both start and end simultaneously. A random flower from each cluster is selected for the initial path, promoting variety though it may not necessarily surpass existing methods.
+  >Enhancing initial population diversity may involve using **point clusters**, originating from the beehive, and exploring different cluster combinations for path construction defining both start and end simultaneously. A random flower from each cluster is selected for the initial path, promoting variety though it may not necessarily surpass existing methods.
 
 - **Mutation Refinement**: Mutation could be improved by considering the spatial area between two flowers, A and B. If any flowers within a defined width of the line from A to B aren't between them in the chromosome, the path is rearranged to include the nearest of these flowers to A. This process starts with a minimal skip between A and B and adjusts dynamically, with the maximum width being the distance between A and B.
