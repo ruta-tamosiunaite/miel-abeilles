@@ -55,7 +55,7 @@ Each selected pair produces one fitter child, potentially contributing to the ne
 
 ## Insights
 
-- **Population selection for crossover** - Optimal reproduction outcomes are achieved by selecting **all bees**, not the TOP 50. This approach ensures higher chromosome variation and controlled convergence.
+- **Population selection for crossover** - Optimal reproduction outcomes are achieved by selecting **all bees**, not the TOP 50%. This approach ensures higher chromosome variation and controlled convergence.
   
 - **Initial population strategy** - For the Traveling Salesman Problem, initializing with a fit population leads to significantly improved results (distance of ~5500) but causes rapid convergence and homogeneity. Introducing random chromosomes does not notably enhance outcomes.
 
